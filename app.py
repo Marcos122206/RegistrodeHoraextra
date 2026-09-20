@@ -26,11 +26,11 @@ def resolve_database_path():
             raise PermissionError(f"Diretório sem permissão de escrita: {candidate.parent}")
         return candidate
     except OSError as error:
-        print(
-            f"Aviso: DATABASE_PATH={candidate} não está disponível ({error}). "
-            f"Usando {LEGACY_DB_PATH}. Configure um Persistent Disk gravável para manter os dados."
-        )
-        return LEGACY_DB_PATH
+        raise RuntimeError(
+            f"DATABASE_PATH={candidate} não está disponível ({error}). "
+            "Configure um Persistent Disk gravável antes de iniciar o site. "
+            "O app foi interrompido para evitar perda de usuários."
+        ) from error
 
 
 DB_PATH = resolve_database_path()
