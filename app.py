@@ -8,15 +8,22 @@ import sqlite3
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory, session
+import psycopg
+from psycopg.rows import dict_row
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
 LEGACY_DB_PATH = BASE_DIR / "database.sqlite3"
+DEFAULT_PERSISTENT_DB_PATH = Path("/var/data/database.sqlite3")
 
 
 def resolve_database_path():
     configured_path = os.environ.get("DATABASE_PATH")
     if not configured_path:
+        if DEFAULT_PERSISTENT_DB_PATH.parent.is_dir() and os.access(
+            DEFAULT_PERSISTENT_DB_PATH.parent, os.W_OK
+        ):
+            return DEFAULT_PERSISTENT_DB_PATH
         return LEGACY_DB_PATH
 
     candidate = Path(configured_path)
@@ -34,13 +41,30 @@ def resolve_database_path():
 
 
 DB_PATH = resolve_database_path()
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+secret_key = os.environ.get("FLASK_SECRET_KEY", "").strip()
+
+is_production = any(
+    (
+        os.environ.get("FLASK_ENV", "").lower() == "production",
+        DATABASE_URL,
+        os.environ.get("DATABASE_PATH", "").strip(),
+        os.environ.get("FLASK_HTTPS", "0") == "1",
+    )
+)
+
+if not secret_key and is_production:
+    raise RuntimeError(
+        "FLASK_SECRET_KEY precisa estar configurada em produção. "
+        "Use a mesma chave em todos os processos e deploys."
+    )
 
 if DB_PATH != LEGACY_DB_PATH and not DB_PATH.exists() and LEGACY_DB_PATH.exists():
     shutil.copy2(LEGACY_DB_PATH, DB_PATH)
 
 app = Flask(__name__, static_folder=str(BASE_DIR))
 app.config.update(
-    SECRET_KEY=os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32),
+    SECRET_KEY=secret_key or secrets.token_hex(32),
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=os.environ.get("FLASK_HTTPS", "0") == "1",
@@ -49,24 +73,48 @@ app.config.update(
 
 
 def get_db():
+    if DATABASE_URL:
+        return psycopg.connect(DATABASE_URL, row_factory=dict_row)
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 
+def execute_query(conn, query, params=()):
+    if DATABASE_URL:
+        query = query.replace("?", "%s")
+    return conn.execute(query, params)
+
+
 def init_db():
     conn = get_db()
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            data_json TEXT DEFAULT '{}'
+    if DATABASE_URL:
+        execute_query(
+            conn,
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                data_json TEXT DEFAULT '{}'
+            )
+            """,
         )
-        """
-    )
+    else:
+        execute_query(
+            conn,
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                data_json TEXT DEFAULT '{}'
+            )
+            """,
+        )
     conn.commit()
     conn.close()
 
@@ -121,7 +169,8 @@ def register_user():
 
     conn = get_db()
     try:
-        conn.execute(
+        execute_query(
+            conn,
             "INSERT INTO users (name, email, password_hash, data_json) VALUES (?, ?, ?, ?)",
             (name, email, hash_password(password), json.dumps({}))
         )
@@ -144,7 +193,8 @@ def login_user():
         return jsonify({"ok": False, "message": "Informe email e senha."}), 400
 
     conn = get_db()
-    row = conn.execute(
+    row = execute_query(
+        conn,
         "SELECT id, name, email, password_hash, data_json FROM users WHERE email = ?",
         (email,),
     ).fetchone()
@@ -164,7 +214,8 @@ def login_user():
         if secrets.compare_digest(row["password_hash"], legacy_hash):
             password_is_valid = True
             conn = get_db()
-            conn.execute(
+            execute_query(
+                conn,
                 "UPDATE users SET password_hash = ? WHERE id = ?",
                 (hash_password(password), row["id"]),
             )
@@ -195,7 +246,7 @@ def api_state():
 
     if request.method == "GET":
         conn = get_db()
-        row = conn.execute("SELECT data_json FROM users WHERE id = ?", (user_id,)).fetchone()
+        row = execute_query(conn, "SELECT data_json FROM users WHERE id = ?", (user_id,)).fetchone()
         conn.close()
         if not row:
             return jsonify({"ok": False, "state": {}})
@@ -208,7 +259,8 @@ def api_state():
     state.pop("user", None)
 
     conn = get_db()
-    conn.execute(
+    execute_query(
+        conn,
         "UPDATE users SET data_json = ? WHERE id = ?",
         (json.dumps(state), user_id),
     )
@@ -230,7 +282,7 @@ def delete_account():
         return jsonify({"ok": False, "message": "Faça login para continuar."}), 401
 
     conn = get_db()
-    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    execute_query(conn, "DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
     session.clear()
