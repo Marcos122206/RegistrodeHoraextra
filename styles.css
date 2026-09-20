@@ -40,6 +40,26 @@ textarea {
   display: none !important;
 }
 
+.site-signature {
+  position: fixed;
+  right: 20px;
+  bottom: 16px;
+  z-index: 10;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.site-signature span {
+  display: inline-block;
+  padding: 6px 10px;
+  border: 1px solid rgba(103, 116, 137, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
 .auth-shell {
   min-height: 100vh;
   display: grid;
@@ -510,5 +530,10 @@ button:hover {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  .site-signature {
+    right: 12px;
+    bottom: 10px;
   }
 }
