@@ -397,6 +397,31 @@ async function loginUser(event) {
   }
 }
 
+async function restoreSession() {
+  try {
+    const response = await fetch('/api/session');
+    const result = await readApiResponse(response);
+
+    if (!response.ok || !result.ok || !result.authenticated) return;
+
+    if (result.state && typeof result.state === 'object') {
+      state = { ...state, ...result.state };
+    }
+
+    state.user = {
+      email: result.user.email,
+      name: result.user.name
+    };
+
+    loginView.classList.add('hidden');
+    registerView.classList.add('hidden');
+    appView.classList.remove('hidden');
+    renderDashboard();
+  } catch {
+    // Keep the login screen available when the server cannot be reached.
+  }
+}
+
 async function registerUser(event) {
   event.preventDefault();
   const registerStatus = document.getElementById('registerStatus');
@@ -614,3 +639,4 @@ document.getElementById('diaPagamento').value = state.settings.diaPagamento || 5
 renderScheduleTable();
 applyFinanceVisibility();
 renderDashboard();
+restoreSession();

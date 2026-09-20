@@ -15,6 +15,16 @@ from werkzeug.security import check_password_hash, generate_password_hash
 BASE_DIR = Path(__file__).resolve().parent
 LEGACY_DB_PATH = BASE_DIR / "database.sqlite3"
 DEFAULT_PERSISTENT_DB_PATH = Path("/var/data/database.sqlite3")
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+
+if DATABASE_URL and "[YOUR-PASSWORD]" in DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL ainda contém [YOUR-PASSWORD]. "
+        "Substitua o placeholder pela senha real do Supabase no Render."
+    )
+if DATABASE_URL and "sslmode=" not in DATABASE_URL.lower():
+    separator = "&" if "?" in DATABASE_URL else "?"
+    DATABASE_URL = f"{DATABASE_URL}{separator}sslmode=require"
 
 
 def resolve_database_path():
@@ -40,8 +50,7 @@ def resolve_database_path():
         ) from error
 
 
-DB_PATH = resolve_database_path()
-DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+DB_PATH = None if DATABASE_URL else resolve_database_path()
 secret_key = os.environ.get("FLASK_SECRET_KEY", "").strip()
 
 is_production = any(
@@ -59,7 +68,7 @@ if not secret_key and is_production:
         "Use a mesma chave em todos os processos e deploys."
     )
 
-if DB_PATH != LEGACY_DB_PATH and not DB_PATH.exists() and LEGACY_DB_PATH.exists():
+if DB_PATH and DB_PATH != LEGACY_DB_PATH and not DB_PATH.exists() and LEGACY_DB_PATH.exists():
     shutil.copy2(LEGACY_DB_PATH, DB_PATH)
 
 app = Flask(__name__, static_folder=str(BASE_DIR))
@@ -236,6 +245,32 @@ def login_user():
 
     state = load_user_state(row)
     return jsonify({"ok": True, "user": user, "state": state})
+
+
+@app.route("/api/session", methods=["GET"])
+def current_session():
+    user_id = get_current_user_id()
+    if not user_id:
+        return jsonify({"ok": True, "authenticated": False})
+
+    conn = get_db()
+    row = execute_query(
+        conn,
+        "SELECT id, name, email, data_json FROM users WHERE id = ?",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        session.clear()
+        return jsonify({"ok": True, "authenticated": False})
+
+    return jsonify({
+        "ok": True,
+        "authenticated": True,
+        "user": {"id": row["id"], "name": row["name"], "email": row["email"]},
+        "state": load_user_state(row),
+    })
 
 
 @app.route("/api/state", methods=["GET", "POST"])
