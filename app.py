@@ -3,6 +3,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -10,7 +11,12 @@ from flask import Flask, jsonify, request, send_from_directory, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "database.sqlite3"
+LEGACY_DB_PATH = BASE_DIR / "database.sqlite3"
+DB_PATH = Path(os.environ.get("DATABASE_PATH", str(LEGACY_DB_PATH)))
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+if DB_PATH != LEGACY_DB_PATH and not DB_PATH.exists() and LEGACY_DB_PATH.exists():
+    shutil.copy2(LEGACY_DB_PATH, DB_PATH)
 
 app = Flask(__name__, static_folder=str(BASE_DIR))
 app.config.update(
