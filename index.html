@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registro de Hora Extra</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="loginView" class="auth-shell">
+      <div class="auth-card">
+        <div class="brand-block">
+          <span class="brand-badge">H+</span>
+          <h1>Registro de Hora Extra</h1>
+          <p>Controle pessoal da sua jornada, banco de horas e feedback.</p>
+        </div>
+
+        <form id="loginForm" class="login-form">
+          <label>
+            <span>E-mail</span>
+            <input type="email" id="email" required />
+          </label>
+
+          <label>
+            <span>Senha</span>
+            <input type="password" id="password" required />
+          </label>
+
+          <button type="submit">Entrar</button>
+        </form>
+
+        <div class="auth-switcher">
+          <span>Não tem conta?</span>
+          <button type="button" id="showRegisterBtn" class="text-btn">Criar cadastro</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="registerView" class="auth-shell hidden">
+      <div class="auth-card">
+        <div class="brand-block">
+          <span class="brand-badge">H+</span>
+          <h1>Criar conta</h1>
+          <p>Cadastre-se para controlar seu saldo e horas extras.</p>
+        </div>
+
+        <form id="registerForm" class="login-form">
+          <label>
+            <span>Nome</span>
+            <input type="text" id="registerName" placeholder="Seu nome" required />
+          </label>
+
+          <label>
+            <span>E-mail</span>
+            <input type="email" id="registerEmail" placeholder="seu@email.com" required />
+          </label>
+
+          <label>
+            <span>Senha</span>
+            <input type="password" id="registerPassword" placeholder="Mínimo de 8 caracteres" minlength="8" required />
+          </label>
+
+          <button type="submit" class="secondary-btn">Cadastrar</button>
+        </form>
+
+        <p id="registerStatus" class="auth-status" role="status" aria-live="polite"></p>
+
+        <div class="auth-switcher">
+          <span>Já tem conta?</span>
+          <button type="button" id="showLoginBtn" class="text-btn">Fazer login</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="appView" class="app hidden">
+      <header class="topbar">
+        <div class="user-intro">
+          <div class="avatar">U</div>
+          <div>
+            <p class="eyebrow">Meu painel pessoal</p>
+            <h2 id="userGreeting">Olá, Usuário</h2>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button id="toggleFinanceVisibility" class="secondary-btn" type="button" aria-label="Ocultar finanças">
+            👁️ Ocultar finanças
+          </button>
+          <button id="logoutBtn" class="secondary-btn">Sair</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Navegação principal">
+        <button class="tab active" data-target="dashboardSection">Dashboard</button>
+        <button class="tab" data-target="registroSection">Registrar</button>
+        <button class="tab" data-target="horarioSection">Horários</button>
+        <button class="tab" data-target="configSection">Configurações</button>
+        <button class="tab" data-target="feedbackSection">Feedback</button>
+        <button class="tab" data-target="privacySection">Privacidade</button>
+      </nav>
+
+      <main>
+        <section id="dashboardSection" class="panel active-panel">
+          <div class="summary-grid">
+            <article class="summary-card highlight">
+              <span>Horas extras no mês</span>
+              <strong id="totalExtras">0h 00m</strong>
+              <small>Registradas</small>
+            </article>
+
+            <article class="summary-card">
+              <span>Saldo em banco</span>
+              <strong id="saldoBanco">0h 00m</strong>
+              <small>Horas disponíveis</small>
+            </article>
+
+            <article class="summary-card finance-card" data-finance-card="salario">
+              <span>Salário base</span>
+              <strong id="salarioBase">R$ 0,00</strong>
+              <small>Mensal</small>
+            </article>
+
+            <article class="summary-card finance-card" data-finance-card="receber">
+              <span>Receber no fim do mês</span>
+              <strong id="receberFinalMes">R$ 0,00</strong>
+              <small>Horas extras</small>
+            </article>
+
+            <article class="summary-card">
+              <span>Pagamento final</span>
+              <strong id="horaPaga">R$ 0,00</strong>
+              <small>No fim do mês</small>
+            </article>
+
+            <article class="summary-card">
+              <span>Meu regime</span>
+              <strong id="statusEmpresa">Banco de horas</strong>
+              <small>Regra atual</small>
+            </article>
+          </div>
+
+          <div class="panel-row">
+            <div class="panel-box">
+              <div class="panel-header">
+                <h3>Histórico</h3>
+              </div>
+              <ul id="historicoList" class="history-list"></ul>
+            </div>
+
+            <div class="panel-box">
+              <div class="panel-header">
+                <h3>Resumo da semana</h3>
+              </div>
+              <div id="resumoSemana" class="week-summary"></div>
+            </div>
+          </div>
+
+          <div class="panel-row lower-grid">
+            <div class="panel-box">
+              <div class="panel-header">
+                <h3>Resumo do mês</h3>
+              </div>
+              <div id="monthSummary" class="month-summary"></div>
+            </div>
+
+            <div class="panel-box">
+              <div class="panel-header">
+                <h3>Feedback recente</h3>
+              </div>
+              <div id="feedbackList" class="feedback-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="registroSection" class="panel">
+          <div class="panel-box centered">
+            <div class="panel-header">
+              <h3>Registrar hora extra</h3>
+            </div>
+
+            <form id="registroForm" class="stack-form">
+              <div class="form-grid two-columns">
+                <label>
+                  <span>Data</span>
+                  <input type="date" id="registroData" required />
+                </label>
+
+                <label>
+                  <span>Tipo</span>
+                  <select id="registroTipo">
+                    <option value="banco">Banco de horas</option>
+                    <option value="final_mes">Pagar no final do mês</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="form-grid two-columns">
+                <label>
+                  <span>Entrada</span>
+                  <input type="time" id="registroInicio" required />
+                </label>
+                <label>
+                  <span>Saída</span>
+                  <input type="time" id="registroFim" required />
+                </label>
+              </div>
+
+              <div class="form-grid two-columns">
+                <label>
+                  <span>Almoço início</span>
+                  <input type="time" id="almocoInicio" />
+                </label>
+                <label>
+                  <span>Almoço fim</span>
+                  <input type="time" id="almocoFim" />
+                </label>
+              </div>
+
+              <label>
+                <span>Motivo / Observação</span>
+                <textarea id="registroMotivo" rows="3" placeholder="Descreva o motivo da hora extra"></textarea>
+              </label>
+
+              <button type="submit">Salvar registro</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="horarioSection" class="panel">
+          <div class="panel-box">
+            <div class="panel-header">
+              <h3>Configurar horários da semana</h3>
+            </div>
+
+            <form id="horarioForm" class="schedule-form">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Dia</th>
+                      <th>Entrada</th>
+                      <th>Saída</th>
+                      <th>Almoço início</th>
+                      <th>Almoço fim</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scheduleTableBody"></tbody>
+                </table>
+              </div>
+
+              <button type="submit">Salvar horários</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="configSection" class="panel">
+          <div class="panel-box centered">
+            <div class="panel-header">
+              <h3>Configurações da jornada</h3>
+            </div>
+
+            <form id="configForm" class="stack-form">
+              <div class="form-grid two-columns">
+                <label>
+                  <span>Salário mensal</span>
+                  <input type="number" id="salarioMensal" min="0" step="0.01" />
+                </label>
+
+                <label>
+                  <span>Jornada diária (horas)</span>
+                  <input type="number" id="jornadaDiaria" min="1" max="24" step="0.5" />
+                </label>
+              </div>
+
+              <div class="form-grid two-columns">
+                <label>
+                  <span>% hora extra dia útil</span>
+                  <input type="number" id="extraDiaUtil" min="0" max="300" step="5" />
+                </label>
+
+                <label>
+                  <span>% hora extra fim de semana</span>
+                  <input type="number" id="extraFimSemana" min="0" max="300" step="5" />
+                </label>
+              </div>
+
+              <div class="form-grid two-columns">
+                <label>
+                  <span>Dia de fechamento do mês</span>
+                  <input type="number" id="diaFechamentoMes" min="1" max="31" step="1" />
+                </label>
+
+                <label>
+                  <span>Vencimento da folha</span>
+                  <input type="number" id="diaPagamento" min="1" max="31" step="1" />
+                </label>
+              </div>
+
+              <button type="submit">Salvar configurações</button>
+            </form>
+
+            <div class="account-danger-zone">
+              <h4>Excluir minha conta</h4>
+              <p>Esta ação remove seu cadastro e todos os dados salvos. Não pode ser desfeita.</p>
+              <button type="button" id="deleteAccountBtn" class="danger-btn">Excluir conta definitivamente</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="privacySection" class="panel">
+          <div class="panel-box centered privacy-copy">
+            <div class="panel-header">
+              <h3>Privacidade</h3>
+            </div>
+            <p>Seus dados de cadastro, salário, jornada, registros e feedback ficam associados à sua conta.</p>
+            <p>Usamos esses dados somente para calcular e exibir seu controle pessoal de horas extras. Não vendemos seus dados.</p>
+            <p>Você pode excluir sua conta e todos os dados salvos a qualquer momento em Configurações.</p>
+          </div>
+        </section>
+
+        <section id="feedbackSection" class="panel">
+          <div class="panel-box centered">
+            <div class="panel-header">
+              <h3>Enviar feedback</h3>
+            </div>
+
+            <form id="feedbackForm" class="stack-form">
+              <div class="form-grid two-columns">
+                <label>
+                  <span>Tipo</span>
+                  <select id="feedbackTipo">
+                    <option value="sugestao">Sugestão</option>
+                    <option value="elogio">Elogio</option>
+                    <option value="problema">Problema</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Nota</span>
+                  <select id="feedbackNota">
+                    <option value="5">5 - Excelente</option>
+                    <option value="4">4 - Bom</option>
+                    <option value="3">3 - Regular</option>
+                    <option value="2">2 - Ruim</option>
+                    <option value="1">1 - Péssimo</option>
+                  </select>
+                </label>
+              </div>
+
+              <label>
+                <span>Mensagem</span>
+                <textarea id="feedbackMensagem" rows="4" placeholder="Conte como está sua experiência com o registro de ponto e horas extras"></textarea>
+              </label>
+
+              <button type="submit">Enviar feedback</button>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
